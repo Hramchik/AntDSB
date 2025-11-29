@@ -1,0 +1,20 @@
+{
+  "version": 3,
+  "configurePresets": [
+    {
+      "name": "ReleaseV",
+      "displayName": "Release with vcpkg",
+      "generator": "Ninja",
+      "binaryDir": "${sourceDir}/Release",
+      "cacheVariables": {
+        "CMAKE_TOOLCHAIN_FILE": {
+          "value": "vcpkg/scripts/buildsystems/vcpkg.cmake",
+          "type": "FILEPATH"
+        },
+        "CMAKE_EXE_LINKER_FLAG": "-static",
+        "VCPKG_TARGET_TRIPLET": "x64-linux",
+        "CMAKE_BUILD_TYPE": "Release"
+      }
+    }
+  ]
+}
