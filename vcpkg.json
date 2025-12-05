@@ -1,6 +1,7 @@
 {
   "dependencies": [
     "dpp",
-    "yaml-cpp"
+    "yaml-cpp",
+    "curl"
   ]
 }
