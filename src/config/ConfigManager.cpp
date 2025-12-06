@@ -3,6 +3,8 @@
 //
 
 #include "ConfigManager.h"
+#include "logger/Logger.h"
+
 #include <fstream>
 
 bool ConfigManager::ConfigExists(const std::string& configPath) {
@@ -107,16 +109,17 @@ bool ConfigManager::CreateDefaultConfig(const std::string& configPath) {
 YAML::Node ConfigManager::ReadConfig(const std::string& configPath) {
     try {
         if (!ConfigExists(configPath)) {
-            std::cerr << "Config file not found: " << configPath << std::endl;
+            LogError("Config file not found: " + configPath);
             return YAML::Node();
         }
 
         YAML::Node config = YAML::LoadFile(configPath);
-        std::cout << "Config loaded successfully: " << configPath << std::endl;
+        LogInfo("Config loaded successfully: " + configPath);
         return config;
 
     } catch (const YAML::Exception& e) {
-        std::cerr << "Error parsing config: " << e.what() << std::endl;
+        std::string except = e.what();
+        LogError("Error parsing config: " + except);
         return YAML::Node();
     }
 }
@@ -126,18 +129,19 @@ bool ConfigManager::SaveConfig(const std::string& configPath, const YAML::Node& 
         std::ofstream outFile(configPath);
 
         if (!outFile.is_open()) {
-            std::cerr << "Failed to open config file for writing: " << configPath << std::endl;
+            LogError("Failed to open config file for writing: " + configPath);
             return false;
         }
 
         outFile << config;
         outFile.close();
 
-        std::cout << "Config saved successfully: " << configPath << std::endl;
+        LogInfo("Config saved successfully: " + configPath);
         return true;
 
     } catch (const std::exception& e) {
-        std::cerr << "Error saving config: " << e.what() << std::endl;
+        std::string except = e.what();
+        LogError("Error saving config: " + except);
         return false;
     }
 }
@@ -168,14 +172,15 @@ std::string ConfigManager::ReadConfigValue(const std::string& configPath, const 
         YAML::Node node = GetNodeByPath(config, key);
 
         if (node.IsNull()) {
-            std::cerr << "Key not found: " << key << std::endl;
+            LogError("Key not found: " + key);
             return "";
         }
 
         return node.as<std::string>();
 
     } catch (const std::exception& e) {
-        std::cerr << "Error reading config value: " << e.what() << std::endl;
+        std::string except = e.what();
+        LogError("Error reading config value: " + except);
         return "";
     }
 }
