@@ -20,7 +20,7 @@ set(SOURCES
         src/discord/ui/ApplicationUI.cpp
         src/utils/TokenValidator.cpp
         src/discord/callbacks/BuiltInCallbacks.cpp
-        src/discord/callbacks/BuiltInCallbacks.h
+        src/logger/Logger.cpp
 )
 
 add_executable(AntDSB ${SOURCES})

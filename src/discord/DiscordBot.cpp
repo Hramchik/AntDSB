@@ -11,6 +11,7 @@
 #include "BuiltInCommands.h"
 #include "callbacks/BuiltInCallbacks.h"
 #include "utils/ThreadUtils.h"
+#include "logger/Logger.h"
 
 DiscordBot::DiscordBot(const std::string& token)
     : running(false) {
@@ -144,14 +145,18 @@ void DiscordBot::RegisterEventHandlers() {
         });
 
         cluster->on_message_create([this](const dpp::message_create_t& event) {
-            if (event.msg.author.is_bot()) {
-                return;
-            }
+    if (event.msg.author.is_bot()) {
+        return;
+    }
 
-            std::cout << "[DiscordBot][" << std::this_thread::get_id() << "] "
-                      << event.msg.author.username << ": "
-                      << event.msg.content << std::endl;
-        });
+    const auto cid = static_cast<long long>(event.msg.channel_id);
+    dpp::channel* ch = dpp::find_channel(event.msg.channel_id);
+    std::string channel_name = ch ? ch->name : "<Unknown>";
+    std::string text = event.msg.author.username + ": " + event.msg.content;
+
+    // LogDebug("Msg in channel " + std::to_string(cid) + " | " + text);
+    LogChannel(cid, channel_name, text);
+});
 
         cluster->on_guild_member_add([this](const dpp::guild_member_add_t& event) {
             std::cout << "[DiscordBot][" << std::this_thread::get_id() << "] "
