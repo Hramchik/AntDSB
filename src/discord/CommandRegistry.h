@@ -7,7 +7,7 @@
 
 #include <dpp/dpp.h>
 #include <string>
-#include <map>
+#include <unordered_map>
 #include <functional>
 #include <thread>
 #include <queue>
@@ -30,7 +30,8 @@ public:
     static void StopCommandProcessor();
 
 private:
-    static std::map<std::string, CommandInfo>& GetCommands();
+    using CommandMap = std::unordered_map<std::string, CommandInfo>;
+    static CommandMap& GetCommands();
 
     struct PendingCommand {
         std::string name;

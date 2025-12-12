@@ -5,40 +5,49 @@
 #include <iostream>
 
 #include "CallbackRegistry.h"
+#include "logger/Logger.h"
 
-std::map<std::string, CallbackRegistry::ButtonCallbackInfo>& CallbackRegistry::GetButtonCallbacks() {
-    static std::map<std::string, ButtonCallbackInfo> callbacks;
+CallbackRegistry::ButtonMap& CallbackRegistry::GetButtonCallbacks() {
+    static ButtonMap callbacks;
     return callbacks;
 }
 
-std::map<std::string, CallbackRegistry::FormCallbackInfo>& CallbackRegistry::GetFormCallbacks() {
-    static std::map<std::string, FormCallbackInfo> callbacks;
+CallbackRegistry::FormMap& CallbackRegistry::GetFormCallbacks() {
+    static FormMap callbacks;
     return callbacks;
 }
 
 void CallbackRegistry::RegisterButtonCallback(const ButtonCallbackInfo& callback) {
     GetButtonCallbacks()[callback.custom_id] = callback;
-    std::cout << "[CallbackRegistry] Button callback registered: " << callback.custom_id << std::endl;
+    LogDebug("[CallbackRegistry] Button callback registered: " + callback.custom_id);
 }
 
 void CallbackRegistry::RegisterFormCallback(const FormCallbackInfo& callback) {
     GetFormCallbacks()[callback.custom_id] = callback;
-    std::cout << "[CallbackRegistry] Form callback registered: " << callback.custom_id << std::endl;
+    LogDebug("[CallbackRegistry] Form callback registered: " + callback.custom_id);
 }
 
 void CallbackRegistry::HandleButtonClick(const dpp::button_click_t& event) {
     try {
         auto& callbacks = GetButtonCallbacks();
-        auto it = callbacks.find(event.custom_id);
 
+        // поддержка custom_id с параметрами: "id:...:..."
+        std::string key = event.custom_id;
+        auto pos = key.find(':');
+        if (pos != std::string::npos) {
+            key = key.substr(0, pos);  // берём только префикс
+        }
+
+        auto it = callbacks.find(key);
         if (it != callbacks.end()) {
             it->second.callback(event);
         } else {
-            std::cerr << "[CallbackRegistry] Unknown button ID: " << event.custom_id << std::endl;
+            LogError("[CallbackRegistry] Unknown button ID: " + event.custom_id);
         }
 
     } catch (const std::exception& e) {
-        std::cerr << "[CallbackRegistry] Error handling button click: " << e.what() << std::endl;
+        std::string except = e.what();
+        LogError("[CallbackRegistry] Error handling button click: " + except);
     }
 }
 
@@ -50,10 +59,10 @@ void CallbackRegistry::HandleFormSubmit(const dpp::form_submit_t& event) {
         if (it != callbacks.end()) {
             it->second.callback(event);
         } else {
-            std::cerr << "[CallbackRegistry] Unknown form ID: " << event.custom_id << std::endl;
+            LogError("[CallbackRegistry] Unknown form ID: " + event.custom_id);
         }
-
     } catch (const std::exception& e) {
-        std::cerr << "[CallbackRegistry] Error handling form submit: " << e.what() << std::endl;
+        std::string except = e.what();
+        LogError("[CallbackRegistry] Error handling form submit: " + except);
     }
 }

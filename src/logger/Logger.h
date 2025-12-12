@@ -6,6 +6,7 @@
 #define ANTDSB_LOGGER_H
 
 #include <string>
+#include <map>
 #include <mutex>
 #include <fstream>
 
@@ -18,12 +19,14 @@ enum class LogLevel {
 
 void LogInit(const std::string& log_dir = "logs");
 
+void CompressOldLogs(int days_to_keep = 1);
+
 void Log(LogLevel level, const std::string& message);
 
-inline void LogDebug(const std::string& msg)   { Log(LogLevel::Debug,   msg); }
-inline void LogInfo(const std::string& msg)    { Log(LogLevel::Info,    msg); }
-inline void LogWarn(const std::string& msg)    { Log(LogLevel::Warning, msg); }
-inline void LogError(const std::string& msg)   { Log(LogLevel::Error,   msg); }
+inline void LogDebug(const std::string& msg) { Log(LogLevel::Debug, msg); }
+inline void LogInfo(const std::string& msg)  { Log(LogLevel::Info, msg); }
+inline void LogWarn(const std::string& msg)  { Log(LogLevel::Warning, msg); }
+inline void LogError(const std::string& msg) { Log(LogLevel::Error, msg); }
 
 void LogChannel(long long channel_id, const std::string& channel_name, const std::string& message);
 

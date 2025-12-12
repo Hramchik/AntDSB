@@ -8,11 +8,9 @@
 #include <dpp/dpp.h>
 
 namespace ApplicationUI {
-    dpp::embed CreateApplicationEmbed();
-
-    dpp::component CreateApplicationButton();
-
     dpp::interaction_modal_response CreateApplicationModal();
+
+    dpp::message CreateApplicationEntryMessageV2();
 }
 
 #endif //ANTDSB_APPLICATIONUI_H

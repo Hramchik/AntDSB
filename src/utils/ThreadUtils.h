@@ -9,6 +9,8 @@
 #include <algorithm>
 #include <iostream>
 
+#include "logger/Logger.h"
+
 inline int calc_thread_count(double ratio = 0.75, int min_threads = 2) {
     unsigned int hw = std::thread::hardware_concurrency();
     if (hw == 0) {
@@ -17,8 +19,7 @@ inline int calc_thread_count(double ratio = 0.75, int min_threads = 2) {
     int n = static_cast<int>(hw * ratio);
     n = std::max(min_threads, n);
 
-    std::cout << "[ThreadUtils] HW threads: " << hw
-              << ", using: " << n << " (" << ratio * 100 << "%)\n";
+    LogInfo("[ThreadUtils] HW threads: " + std::to_string(hw) + ", using: " + std::to_string(n) + " (" + std::to_string( ratio * 100) + "%)");
     return n;
 }
 

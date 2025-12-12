@@ -32,23 +32,23 @@ int main() {
     DiscordBot bot(token);
     bot.StartAsync();
 
-    LogInfo("Bot is running in background thread. Type 'exit' to stop.\n");
+    LogInfo("Bot is running in background thread. Type 'exit' to stop.");
 
     std::string command;
     while (std::getline(std::cin, command)) {
         if (command == "exit" || command == "quit") {
-            LogInfo("Shutting down bot...\n");
+            LogInfo("Shutting down bot...");
             bot.Stop();
             break;
         }
         if (command == "status") {
-            LogInfo("Bot is running\n");
+            LogInfo("Bot is running");
         } else {
-            LogInfo("Unknown command\n");
+            LogInfo("Unknown command");
         }
     }
 
     bot.Wait();
-    LogInfo("Bot stopped\n");
+    LogInfo("Bot stopped...");
     return 0;
 }

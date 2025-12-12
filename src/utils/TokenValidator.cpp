@@ -3,15 +3,19 @@
 //
 
 #include "TokenValidator.h"
+
 #include <curl/curl.h>
 #include <iostream>
+#
+
+#include "logger/Logger.h"
 
 namespace TokenValidator {
 
     bool ValidateDiscordBotToken(const std::string& token) {
         CURL* curl = curl_easy_init();
         if (!curl) {
-            std::cerr << "[TokenValidator] Failed to init CURL\n";
+            LogError("[TokenValidator] Failed to init CURL");
             return false;
         }
 
@@ -39,7 +43,8 @@ namespace TokenValidator {
         if (res == CURLE_OK) {
             curl_easy_getinfo(curl, CURLINFO_RESPONSE_CODE, &http_code);
         } else {
-            std::cerr << "[TokenValidator] CURL error: " << curl_easy_strerror(res) << "\n";
+            std::string err = curl_easy_strerror(res);
+            LogError("[TokenValidator] CURL error: " + err);
         }
 
         curl_slist_free_all(headers);
@@ -50,10 +55,10 @@ namespace TokenValidator {
         }
 
         if (http_code == 200) {
-            std::cout << "[TokenValidator] Token is VALID (HTTP " << http_code << ")\n";
+            LogInfo("[TokenValidator] Token is VALID (HTTP " + std::to_string(http_code) + ")");
             return true;
         } else {
-            std::cout << "[TokenValidator] Token is INVALID (HTTP " << http_code << ")\n";
+            LogInfo("[TokenValidator] Token is INVALID (HTTP " + std::to_string(http_code) + ")");
             return false;
         }
     }

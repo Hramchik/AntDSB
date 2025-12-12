@@ -10,6 +10,7 @@
 #include <sstream>
 #include <filesystem>
 #include <map>
+#include <zlib.h>
 
 namespace {
     std::mutex g_log_mutex;
@@ -82,7 +83,6 @@ namespace {
         return s;
     }
 
-
     std::string MakeChannelLogFileName() {
         auto now = std::chrono::system_clock::now();
         auto t   = std::chrono::system_clock::to_time_t(now);
@@ -96,6 +96,108 @@ namespace {
         oss << std::put_time(&tm, "%d.%m.%Y") << "_Channel.log";
 
         return oss.str();
+    }
+
+    // Парсим дату из имени вида "dd.mm.yyyy_Discord.log" или "dd.mm.yyyy_Channel.log"
+    bool ParseDateFromLogName(const std::string& filename, std::tm& out_tm) {
+        if (filename.size() < 10) return false;
+        try {
+            int d = std::stoi(filename.substr(0, 2));
+            int m = std::stoi(filename.substr(3, 2));
+            int y = std::stoi(filename.substr(6, 4));
+
+            std::tm tm{};
+            tm.tm_mday = d;
+            tm.tm_mon  = m - 1;
+            tm.tm_year = y - 1900;
+            out_tm = tm;
+            return true;
+        } catch (...) {
+            return false;
+        }
+    }
+
+    // gzip сжатие файла: src -> src+".gz"
+    bool GzipCompressFile(const std::filesystem::path& src_path) {
+        const std::string in_path  = src_path.string();
+        const std::string out_path = in_path + ".gz";
+
+        std::ifstream in(in_path, std::ios::binary);
+        if (!in.is_open()) {
+            std::cerr << "[Logger] Failed to open for gzip: " << in_path << "\n";
+            return false;
+        }
+
+        gzFile out = gzopen(out_path.c_str(), "wb9");
+        if (!out) {
+            std::cerr << "[Logger] Failed to open gzip file: " << out_path << "\n";
+            in.close();
+            return false;
+        }
+
+        char buf[65536];
+        while (in) {
+            in.read(buf, sizeof(buf));
+            std::streamsize got = in.gcount();
+            if (got > 0) {
+                if (gzwrite(out, buf, static_cast<unsigned int>(got)) != got) {
+                    std::cerr << "[Logger] gzwrite failed for: " << out_path << "\n";
+                    gzclose(out);
+                    in.close();
+                    return false;
+                }
+            }
+        }
+
+        gzclose(out);
+        in.close();
+
+        std::error_code ec;
+        std::filesystem::remove(src_path, ec);
+        if (ec) {
+            std::cerr << "[Logger] Failed to remove original: " << in_path << "\n";
+        }
+
+        std::cout << "[Logger] Compressed: " << in_path << " -> " << out_path << "\n";
+        return true;
+    }
+
+    void ProcessDirForCompression(const std::filesystem::path& dir, int days_to_keep) {
+        using namespace std::chrono;
+
+        auto now = system_clock::now();
+
+        std::error_code ec;
+        if (!std::filesystem::exists(dir, ec) || ec) return;
+
+        try {
+            for (const auto& entry : std::filesystem::directory_iterator(dir, ec)) {
+                if (ec) break;
+
+                if (!entry.is_regular_file()) continue;
+
+                const auto& p = entry.path();
+                const std::string name = p.filename().string();
+
+                // интересуют только .log
+                if (p.extension() != ".log") continue;
+
+                std::tm tm{};
+                if (!ParseDateFromLogName(name, tm)) continue;
+
+                std::time_t t = std::mktime(&tm);
+                if (t == -1) continue;
+
+                auto file_time = system_clock::from_time_t(t);
+                auto diff = duration_cast<hours>(now - file_time).count() / 24;
+
+                if (diff >= days_to_keep) {
+                    GzipCompressFile(p);
+                }
+            }
+        } catch (const std::exception& ex) {
+            std::cerr << "[Logger] Exception in ProcessDirForCompression: " << ex.what() << "\n";
+        }
     }
 }
 
@@ -120,6 +222,29 @@ void LogInit(const std::string& log_dir) {
     }
 
     Log(LogLevel::Info, "Logger initialized");
+
+    // Сжимаем старые логи (оставляем только текущий день)
+    CompressOldLogs(1);
+}
+
+void CompressOldLogs(int days_to_keep) {
+    std::lock_guard<std::mutex> lock(g_log_mutex);
+    if (g_log_dir.empty()) return;
+
+    // Обработка основной папки
+    ProcessDirForCompression(std::filesystem::path(g_log_dir), days_to_keep);
+
+    // Обработка каналов
+    std::filesystem::path channels_dir = std::filesystem::path(g_log_dir) / "channels";
+    std::error_code ec;
+    if (std::filesystem::exists(channels_dir, ec)) {
+        for (const auto& ch_entry : std::filesystem::directory_iterator(channels_dir, ec)) {
+            if (ec) break;
+            if (ch_entry.is_directory()) {
+                ProcessDirForCompression(ch_entry.path(), days_to_keep);
+            }
+        }
+    }
 }
 
 void Log(LogLevel level, const std::string& message) {
@@ -150,7 +275,7 @@ void LogChannel(long long channel_id,
     std::error_code ec;
     std::filesystem::create_directories(chan_dir, ec);
 
-    const std::string file_name = MakeChannelLogFileName();  // БЕЗ имени канала
+    const std::string file_name = MakeChannelLogFileName();
     const std::string full_path = chan_dir + "/" + file_name;
 
     const std::string ts = MakeTimestamp();
