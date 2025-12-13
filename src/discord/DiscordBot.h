@@ -9,6 +9,10 @@
 #include <string>
 #include <memory>
 #include <thread>
+struct BotStatus {
+    bool running = false;
+    std::string last_error;
+};
 
 class DiscordBot {
 public:
@@ -22,13 +26,18 @@ public:
 
     dpp::cluster& GetCluster();
 
+    BotStatus GetStatus() const;
+    void SendMessage(dpp::snowflake channel_id, const std::string& text);
+
 private:
+    void BotThreadFunction();
+    void RegisterEventHandlers();
+
     std::unique_ptr<dpp::cluster> cluster;
     std::thread botThread;
-    bool running;
-
-    void RegisterEventHandlers();
-    void BotThreadFunction();
+    std::atomic_bool running;
+    mutable std::mutex status_mutex;
+    BotStatus status;
 };
 
 #endif //ANTDSB_DISCORDBOT_H

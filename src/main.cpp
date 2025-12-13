@@ -1,12 +1,11 @@
-#include <iostream>
-#include <thread>
-
 #include "discord/DiscordBot.h"
 #include "config/ConfigManager.h"
 #include "utils/TokenValidator.h"
 #include "logger/Logger.h"
+#include "cli/ConsoleLoop.h"
+#include "api/GrpcServer.h"
 
-int main() {
+int main(int argc, char** argv) {
     LogInit("logs");
     LogInfo("AntDSB starting!");
 
@@ -25,30 +24,15 @@ int main() {
         return 1;
     }
 
-    std::ostringstream oss;
-    oss << std::this_thread::get_id();
-    LogInfo("[main] Thread ID: " + oss.str());
-
     DiscordBot bot(token);
     bot.StartAsync();
 
-    LogInfo("Bot is running in background thread. Type 'exit' to stop.");
+    GrpcServer grpc_server(bot);
+    grpc_server.Start("0.0.0.0:50051");
 
-    std::string command;
-    while (std::getline(std::cin, command)) {
-        if (command == "exit" || command == "quit") {
-            LogInfo("Shutting down bot...");
-            bot.Stop();
-            break;
-        }
-        if (command == "status") {
-            LogInfo("Bot is running");
-        } else {
-            LogInfo("Unknown command");
-        }
-    }
+    // твой CLI-режим
+    cli::RunConsoleLoop(bot);
 
-    bot.Wait();
-    LogInfo("Bot stopped...");
+    grpc_server.Shutdown();
     return 0;
 }

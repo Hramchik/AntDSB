@@ -1,0 +1,25 @@
+syntax = "proto3";
+
+package antdsb;
+
+service BotService {
+  rpc GetStatus (StatusRequest) returns (StatusReply);
+  rpc SendMessage (SendMessageRequest) returns (SendMessageReply);
+}
+
+message StatusRequest {}
+
+message StatusReply {
+  bool running = 1;
+  string last_error = 2;
+}
+
+message SendMessageRequest {
+  uint64 channel_id = 1;
+  string text = 2;
+}
+
+message SendMessageReply {
+  bool ok = 1;
+  string error = 2;
+}

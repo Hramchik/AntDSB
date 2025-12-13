@@ -96,6 +96,10 @@ bool DiscordBot::Start() {
 
     } catch (const std::exception& e) {
         std::string except = e.what();
+        {
+            std::lock_guard lock(status_mutex);
+            status.last_error = except;
+        }
         LogError("[DiscordBot] Error starting: " + except);
         return false;
     }
@@ -126,6 +130,10 @@ void DiscordBot::BotThreadFunction() {
 
     } catch (const std::exception& e) {
         std::string except = e.what();
+        {
+            std::lock_guard lock(status_mutex);
+            status.last_error = except;
+        }
         LogError("[DiscordBot] Error in bot thread: " + except);
     }
 }
@@ -258,6 +266,24 @@ void DiscordBot::RegisterEventHandlers() {
 
     } catch (const std::exception& e) {
         std::string except = e.what();
+        {
+            std::lock_guard lock(status_mutex);
+            status.last_error = except;
+        }
         LogError("[DiscordBot] Error registering handlers: " + except);
     }
+}
+
+BotStatus DiscordBot::GetStatus() const {
+    std::lock_guard lock(status_mutex);
+    return status;
+}
+
+void DiscordBot::SendMessage(dpp::snowflake channel_id, const std::string& text) {
+    if (!cluster) {
+        LogError("[DiscordBot] SendMessage: cluster is null");
+        return;
+    }
+    dpp::message msg(channel_id, text);
+    cluster->message_create(msg);
 }

@@ -1,8 +1,17 @@
 {
+  "name": "antdsb",
+  "version-string": "0.3.1",
   "dependencies": [
     "dpp",
     "yaml-cpp",
-    "curl",
-    "zlib"
+    {
+      "name": "curl",
+      "features": [
+        "non-http",
+        "ssl",
+        "sspi"
+      ]
+    },
+    "grpc"
   ]
 }
