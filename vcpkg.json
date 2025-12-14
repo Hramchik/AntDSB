@@ -12,6 +12,7 @@
         "sspi"
       ]
     },
-    "grpc"
+    "grpc",
+    "qtbase"
   ]
 }

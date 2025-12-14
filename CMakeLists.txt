@@ -74,3 +74,5 @@ target_include_directories(AntDSB PRIVATE
         ${CMAKE_CURRENT_SOURCE_DIR}/src
         ${GENERATED_DIR}
 )
+
+add_subdirectory(gui)
