@@ -6,8 +6,9 @@
 #define ANTDSB_BOTSERVICEIMPL_H
 
 #include "discord/DiscordBot.h"
-#include "bot.grpc.pb.h"   // из generated
+#include "bot.grpc.pb.h"
 #include <grpcpp/grpcpp.h>
+#include <google/protobuf/empty.pb.h>
 
 class BotServiceImpl final : public antdsb::BotService::Service {
 public:
@@ -20,6 +21,18 @@ public:
     ::grpc::Status SendMessage(::grpc::ServerContext* context,
                                const antdsb::SendMessageRequest* request,
                                antdsb::SendMessageReply* reply) override;
+
+    ::grpc::Status StartBot(::grpc::ServerContext* context,
+                            const google::protobuf::Empty* request,
+                            antdsb::StatusReply* reply) override;
+
+    ::grpc::Status StopBot(::grpc::ServerContext* context,
+                           const google::protobuf::Empty* request,
+                           antdsb::StatusReply* reply) override;
+
+    ::grpc::Status RestartBot(::grpc::ServerContext* context,
+                              const google::protobuf::Empty* request,
+                              antdsb::StatusReply* reply) override;
 
 private:
     DiscordBot& bot_;

@@ -55,7 +55,9 @@ namespace {
     }
 }
 
-DiscordBot::DiscordBot(const std::string& token) : running(false) {
+DiscordBot::DiscordBot(const std::string& token)
+    : token_(token),
+      running(false) {
     try {
         unsigned int hw = std::thread::hardware_concurrency();
         if (hw == 0) hw = 4;
@@ -66,12 +68,23 @@ DiscordBot::DiscordBot(const std::string& token) : running(false) {
                         | dpp::i_direct_messages
                         | dpp::i_guild_voice_states;
 
-        cluster = std::make_unique<dpp::cluster>(token, intents);
+        cluster = std::make_unique<dpp::cluster>(token_, intents);
         DiscordCluster::SetCluster(cluster.get());
+
+        {
+            std::lock_guard lock(status_mutex);
+            status.running = false;
+            status.last_error.clear();
+        }
 
         LogInfo("[DiscordBot] Initialized successfully");
     } catch (const std::exception& e) {
         std::string except = e.what();
+        {
+            std::lock_guard lock(status_mutex);
+            status.running = false;
+            status.last_error = except;
+        }
         LogError("[DiscordBot] Error initializing: " + except);
     }
 }
@@ -84,11 +97,21 @@ bool DiscordBot::Start() {
     try {
         if (!cluster) {
             LogError("[DiscordBot] Cluster is not initialized");
+            std::lock_guard lock(status_mutex);
+            status.running = false;
+            status.last_error = "Cluster not initialized";
             return false;
         }
 
         running = true;
         RegisterEventHandlers();
+
+        {
+            std::lock_guard lock(status_mutex);
+            status.running = false;        // «запускается», READY ещё не был
+            status.last_error.clear();
+        }
+
         cluster->start(dpp::st_wait);
 
         LogInfo("[DiscordBot] Started (sync)");
@@ -98,6 +121,7 @@ bool DiscordBot::Start() {
         std::string except = e.what();
         {
             std::lock_guard lock(status_mutex);
+            status.running = false;
             status.last_error = except;
         }
         LogError("[DiscordBot] Error starting: " + except);
@@ -112,6 +136,13 @@ void DiscordBot::StartAsync() {
     }
 
     running = true;
+
+    {
+        std::lock_guard lock(status_mutex);
+        status.running = false;
+        status.last_error.clear();
+    }
+
     botThread = std::thread(&DiscordBot::BotThreadFunction, this);
     std::ostringstream oss;
     oss << botThread.get_id();
@@ -120,21 +151,31 @@ void DiscordBot::StartAsync() {
 
 void DiscordBot::BotThreadFunction() {
     try {
-        if (!cluster) {
-            LogError("[DiscordBot] Cluster is not initialized");
-            return;
-        }
+        // при async‑старте создаём кластер тут из сохранённого токена
+        cluster = std::make_unique<dpp::cluster>(token_);
+        DiscordCluster::SetCluster(cluster.get());
 
         RegisterEventHandlers();
-        cluster->start(dpp::st_wait);
 
+        // помечаем «бот готов» и поднимаем running = true
+        cluster->on_ready([this](const dpp::ready_t& event) {
+            {
+                std::lock_guard<std::mutex> lock(status_mutex);
+                status.running = true;
+                status.last_error.clear();
+            }
+            std::ostringstream oss;
+            oss << std::this_thread::get_id();
+            LogInfo("[DiscordBot] Bot is ready (status.running = true, thread: "
+                    + oss.str() + ")");
+        });
+
+        cluster->start(dpp::st_wait);
     } catch (const std::exception& e) {
-        std::string except = e.what();
-        {
-            std::lock_guard lock(status_mutex);
-            status.last_error = except;
-        }
-        LogError("[DiscordBot] Error in bot thread: " + except);
+        std::lock_guard<std::mutex> lock(status_mutex);
+        status.running = false;
+        status.last_error = e.what();
+        LogError(std::string("[DiscordBot] BotThreadFunction error: ") + e.what());
     }
 }
 
@@ -160,6 +201,12 @@ void DiscordBot::Stop() {
 
     if (botThread.joinable()) {
         botThread.join();
+    }
+
+    {
+        std::lock_guard lock(status_mutex);
+        status.running = false;
+        // last_error можно оставить как есть
     }
 }
 
@@ -191,15 +238,14 @@ void DiscordBot::RegisterEventHandlers() {
             CommandRegistry::HandleCommand(event, cluster.get());
         });
 
-
         cluster->on_button_click([this](const dpp::button_click_t& event) {
             LogInfo("[DiscordBot] Button clicked: " + event.custom_id);
-                CallbackRegistry::HandleButtonClick(event);
+            CallbackRegistry::HandleButtonClick(event);
         });
 
         cluster->on_form_submit([this](const dpp::form_submit_t& event) {
             LogInfo("[DiscordBot] Form submitted: " + event.custom_id);
-                CallbackRegistry::HandleFormSubmit(event);
+            CallbackRegistry::HandleFormSubmit(event);
         });
 
         cluster->on_message_create([this](const dpp::message_create_t& event) {

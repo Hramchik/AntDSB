@@ -9,6 +9,9 @@
 #include <string>
 #include <memory>
 #include <thread>
+#include <atomic>
+#include <mutex>
+
 struct BotStatus {
     bool running = false;
     std::string last_error;
@@ -33,6 +36,7 @@ private:
     void BotThreadFunction();
     void RegisterEventHandlers();
 
+    std::string token_;
     std::unique_ptr<dpp::cluster> cluster;
     std::thread botThread;
     std::atomic_bool running;

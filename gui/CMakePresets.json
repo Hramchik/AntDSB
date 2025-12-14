@@ -2,7 +2,7 @@
   "version": 3,
   "configurePresets": [
     {
-      "name": "ReleaseV",
+      "name": "ReleaseUI",
       "generator": "Visual Studio 18 2026",
       "binaryDir": "${sourceDir}/build/ReleaseUI",
       "cacheVariables": {
@@ -12,7 +12,7 @@
       "toolchainFile": "${sourceDir}/../vcpkg/scripts/buildsystems/vcpkg.cmake"
     },
     {
-      "name": "DebugV",
+      "name": "DebugUI",
       "generator": "Visual Studio 18 2026",
       "binaryDir": "${sourceDir}/build/DebugUI",
       "cacheVariables": {

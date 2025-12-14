@@ -9,20 +9,22 @@ BotClient::BotClient(const std::string& address) {
     stub_ = antdsb::BotService::NewStub(channel_);
 }
 
-antdsb::StatusReply BotClient::GetStatus() {
+bool BotClient::TryGetStatus(antdsb::StatusReply& out) {
     antdsb::StatusRequest req;
-    antdsb::StatusReply rep;
     grpc::ClientContext ctx;
 
-    auto status = stub_->GetStatus(&ctx, req, &rep);
+    auto status = stub_->GetStatus(&ctx, req, &out);
     if (!status.ok()) {
-        rep.set_running(false);
-        rep.set_last_error(status.error_message());
+        out.set_running(false);
+        out.set_last_error(status.error_message());
+        return false;
     }
-    return rep;
+    return true;
 }
 
-bool BotClient::SendMessage(uint64_t channel_id, const std::string& text, std::string& error) {
+bool BotClient::SendMessage(uint64_t channel_id,
+                            const std::string& text,
+                            std::string& error) {
     antdsb::SendMessageRequest req;
     req.set_channel_id(channel_id);
     req.set_text(text);
@@ -38,5 +40,48 @@ bool BotClient::SendMessage(uint64_t channel_id, const std::string& text, std::s
             error = status.error_message();
         return false;
     }
+
+    return true;
+}
+
+bool BotClient::StartBot(antdsb::StatusReply& out, std::string& error) {
+    google::protobuf::Empty req;
+    grpc::ClientContext ctx;
+
+    auto status = stub_->StartBot(&ctx, req, &out);
+    if (!status.ok()) {
+        error = status.error_message();
+        return false;
+    }
+
+    error.clear();
+    return true;
+}
+
+bool BotClient::StopBot(antdsb::StatusReply& out, std::string& error) {
+    google::protobuf::Empty req;
+    grpc::ClientContext ctx;
+
+    auto status = stub_->StopBot(&ctx, req, &out);
+    if (!status.ok()) {
+        error = status.error_message();
+        return false;
+    }
+
+    error.clear();
+    return true;
+}
+
+bool BotClient::RestartBot(antdsb::StatusReply& out, std::string& error) {
+    google::protobuf::Empty req;
+    grpc::ClientContext ctx;
+
+    auto status = stub_->RestartBot(&ctx, req, &out);
+    if (!status.ok()) {
+        error = status.error_message();
+        return false;
+    }
+
+    error.clear();
     return true;
 }

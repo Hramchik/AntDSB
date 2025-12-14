@@ -2,9 +2,15 @@ syntax = "proto3";
 
 package antdsb;
 
+import "google/protobuf/empty.proto";
+
 service BotService {
   rpc GetStatus (StatusRequest) returns (StatusReply);
   rpc SendMessage (SendMessageRequest) returns (SendMessageReply);
+
+  rpc StartBot (google.protobuf.Empty) returns (StatusReply);
+  rpc StopBot (google.protobuf.Empty) returns (StatusReply);
+  rpc RestartBot (google.protobuf.Empty) returns (StatusReply);
 }
 
 message StatusRequest {}
