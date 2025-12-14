@@ -5,6 +5,8 @@
 #include "ConsoleLoop.h"
 #include "discord/DiscordBot.h"
 #include "logger/Logger.h"
+#include <sstream>
+#include <iostream>
 
 namespace cli {
 
@@ -18,13 +20,8 @@ namespace cli {
                 bot.Stop();
                 break;
             } else if (command == "status") {
-                auto st = bot.GetStatus();
-                LogInfo(std::string("Bot running: ") + (st.running ? "yes" : "no"));
-                if (!st.last_error.empty()) {
-                    LogInfo("Last error: " + st.last_error);
-                }
+                LogInfo("Status: running (CLI only, no detailed state)");
             } else if (command.rfind("say ", 0) == 0) {
-                // say <channel_id> <text...>
                 std::istringstream iss(command.substr(4));
                 long long cid_ll;
                 if (!(iss >> cid_ll)) {
@@ -35,7 +32,17 @@ namespace cli {
                 std::getline(iss, text);
                 if (!text.empty() && text[0] == ' ')
                     text.erase(0, 1);
-                bot.SendMessage(static_cast<dpp::snowflake>(cid_ll), text);
+
+                try {
+                    dpp::cluster& cl = bot.GetCluster();
+                    dpp::message msg;
+                    msg.set_content(text);
+                    msg.channel_id = static_cast<dpp::snowflake>(cid_ll);
+                    cl.message_create(msg);
+                    LogInfo("Message sent from CLI");
+                } catch (const std::exception& e) {
+                    LogError(std::string("Error sending message from CLI: ") + e.what());
+                }
             } else {
                 LogInfo("Unknown command");
             }

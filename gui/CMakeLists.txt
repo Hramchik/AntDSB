@@ -40,7 +40,7 @@ set(GUI_SOURCES
         ${GENERATED_DIR}/bot.grpc.pb.cc
 )
 
-add_executable(AntDSB_GUI ${GUI_SOURCES})
+add_executable(AntDSB_GUI WIN32 ${GUI_SOURCES})
 
 target_include_directories(AntDSB_GUI PRIVATE
         ${CMAKE_CURRENT_SOURCE_DIR}/src

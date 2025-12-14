@@ -7,6 +7,7 @@
 
 #include "discord/DiscordBot.h"
 #include "bot.grpc.pb.h"
+
 #include <grpcpp/grpcpp.h>
 #include <google/protobuf/empty.pb.h>
 
@@ -33,6 +34,14 @@ public:
     ::grpc::Status RestartBot(::grpc::ServerContext* context,
                               const google::protobuf::Empty* request,
                               antdsb::StatusReply* reply) override;
+
+    ::grpc::Status ListChannels(::grpc::ServerContext* context,
+                                const antdsb::ListChannelsRequest* request,
+                                antdsb::ListChannelsReply* reply) override;
+
+    ::grpc::Status ListMessages(::grpc::ServerContext* context,
+                                const antdsb::ListMessagesRequest* request,
+                                antdsb::ListMessagesReply* reply) override;
 
 private:
     DiscordBot& bot_;

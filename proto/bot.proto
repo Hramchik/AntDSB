@@ -8,9 +8,13 @@ service BotService {
   rpc GetStatus (StatusRequest) returns (StatusReply);
   rpc SendMessage (SendMessageRequest) returns (SendMessageReply);
 
-  rpc StartBot (google.protobuf.Empty) returns (StatusReply);
-  rpc StopBot (google.protobuf.Empty) returns (StatusReply);
+  rpc StartBot   (google.protobuf.Empty) returns (StatusReply);
+  rpc StopBot    (google.protobuf.Empty) returns (StatusReply);
   rpc RestartBot (google.protobuf.Empty) returns (StatusReply);
+
+  rpc ListChannels (ListChannelsRequest) returns (ListChannelsReply);
+
+  rpc ListMessages (ListMessagesRequest) returns (ListMessagesReply);
 }
 
 message StatusRequest {}
@@ -28,4 +32,32 @@ message SendMessageRequest {
 message SendMessageReply {
   bool ok = 1;
   string error = 2;
+}
+
+message ChannelInfo {
+  uint64 id   = 1;
+  string name = 2;
+}
+
+message ListChannelsRequest {}
+
+message ListChannelsReply {
+  repeated ChannelInfo channels = 1;
+}
+
+message MessageInfo {
+  uint64 id        = 1;
+  uint64 author_id = 2;
+  string author    = 3;
+  string content   = 4;
+  uint64 timestamp = 5;
+}
+
+message ListMessagesRequest {
+  uint64 channel_id = 1;
+  uint32 limit      = 2;
+}
+
+message ListMessagesReply {
+  repeated MessageInfo messages = 1;
 }

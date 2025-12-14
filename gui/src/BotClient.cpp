@@ -12,7 +12,6 @@ BotClient::BotClient(const std::string& address) {
 bool BotClient::TryGetStatus(antdsb::StatusReply& out) {
     antdsb::StatusRequest req;
     grpc::ClientContext ctx;
-
     auto status = stub_->GetStatus(&ctx, req, &out);
     if (!status.ok()) {
         out.set_running(false);
@@ -31,7 +30,6 @@ bool BotClient::SendMessage(uint64_t channel_id,
 
     antdsb::SendMessageReply rep;
     grpc::ClientContext ctx;
-
     auto status = stub_->SendMessage(&ctx, req, &rep);
     if (!status.ok() || !rep.ok()) {
         if (!rep.error().empty())
@@ -40,20 +38,17 @@ bool BotClient::SendMessage(uint64_t channel_id,
             error = status.error_message();
         return false;
     }
-
     return true;
 }
 
 bool BotClient::StartBot(antdsb::StatusReply& out, std::string& error) {
     google::protobuf::Empty req;
     grpc::ClientContext ctx;
-
     auto status = stub_->StartBot(&ctx, req, &out);
     if (!status.ok()) {
         error = status.error_message();
         return false;
     }
-
     error.clear();
     return true;
 }
@@ -61,13 +56,11 @@ bool BotClient::StartBot(antdsb::StatusReply& out, std::string& error) {
 bool BotClient::StopBot(antdsb::StatusReply& out, std::string& error) {
     google::protobuf::Empty req;
     grpc::ClientContext ctx;
-
     auto status = stub_->StopBot(&ctx, req, &out);
     if (!status.ok()) {
         error = status.error_message();
         return false;
     }
-
     error.clear();
     return true;
 }
@@ -75,13 +68,55 @@ bool BotClient::StopBot(antdsb::StatusReply& out, std::string& error) {
 bool BotClient::RestartBot(antdsb::StatusReply& out, std::string& error) {
     google::protobuf::Empty req;
     grpc::ClientContext ctx;
-
     auto status = stub_->RestartBot(&ctx, req, &out);
     if (!status.ok()) {
         error = status.error_message();
         return false;
     }
-
     error.clear();
+    return true;
+}
+
+bool BotClient::ListChannels(std::vector<antdsb::ChannelInfo>& out, std::string& error) {
+    antdsb::ListChannelsRequest req;
+    antdsb::ListChannelsReply rep;
+    grpc::ClientContext ctx;
+
+    auto status = stub_->ListChannels(&ctx, req, &rep);
+    if (!status.ok()) {
+        error = status.error_message();
+        return false;
+    }
+
+    out.clear();
+    out.reserve(rep.channels_size());
+    for (const auto& ch : rep.channels()) {
+        out.push_back(ch);
+    }
+    return true;
+}
+
+bool BotClient::ListMessages(uint64_t channel_id,
+                             uint32_t limit,
+                             std::vector<antdsb::MessageInfo>& out,
+                             std::string& error) {
+    antdsb::ListMessagesRequest req;
+    req.set_channel_id(channel_id);
+    req.set_limit(limit);
+
+    antdsb::ListMessagesReply rep;
+    grpc::ClientContext ctx;
+
+    auto status = stub_->ListMessages(&ctx, req, &rep);
+    if (!status.ok()) {
+        error = status.error_message();
+        return false;
+    }
+
+    out.clear();
+    out.reserve(rep.messages_size());
+    for (const auto& m : rep.messages()) {
+        out.push_back(m);
+    }
     return true;
 }

@@ -9,12 +9,18 @@
 #include <string>
 #include <memory>
 #include <thread>
-#include <atomic>
+#include <deque>
 #include <mutex>
+#include <unordered_map>
+#include <vector>
 
-struct BotStatus {
-    bool running = false;
-    std::string last_error;
+struct LoggedMessage {
+    uint64_t id;
+    uint64_t channel_id;
+    uint64_t author_id;
+    std::string author;
+    std::string content;
+    uint64_t timestamp; // unix seconds
 };
 
 class DiscordBot {
@@ -29,19 +35,22 @@ public:
 
     dpp::cluster& GetCluster();
 
-    BotStatus GetStatus() const;
-    void SendMessage(dpp::snowflake channel_id, const std::string& text);
+    // Список текстовых каналов (id + имя)
+    std::vector<std::pair<uint64_t, std::string>> ListTextChannels() const;
+
+    // Последние limit сообщений канала (от старых к новым)
+    std::vector<LoggedMessage> GetRecentMessages(uint64_t channel_id, uint32_t limit);
 
 private:
-    void BotThreadFunction();
-    void RegisterEventHandlers();
-
-    std::string token_;
     std::unique_ptr<dpp::cluster> cluster;
     std::thread botThread;
-    std::atomic_bool running;
-    mutable std::mutex status_mutex;
-    BotStatus status;
+    bool running;
+
+    mutable std::mutex messagesMutex;
+    std::unordered_map<uint64_t, std::deque<LoggedMessage>> messagesByChannel;
+
+    void RegisterEventHandlers();
+    void BotThreadFunction();
 };
 
 #endif //ANTDSB_DISCORDBOT_H

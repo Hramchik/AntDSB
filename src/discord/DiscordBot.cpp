@@ -4,7 +4,7 @@
 
 #include <iostream>
 #include <thread>
-
+#include <sstream>
 #include "DiscordBot.h"
 #include "DiscordCluster.h"
 #include "CommandRegistry.h"
@@ -15,76 +15,67 @@
 #include "logger/Logger.h"
 
 namespace {
-    std::unordered_map<dpp::snowflake, dpp::snowflake> g_last_voice_channel;
-    std::unordered_map<dpp::snowflake, std::string>    g_channel_name_cache;
-    std::unordered_map<dpp::snowflake, std::string>    g_username_cache;
 
-    std::string get_channel_name(dpp::snowflake id) {
-        if (!id) return {};
-        auto it = g_channel_name_cache.find(id);
-        if (it != g_channel_name_cache.end())
-            return it->second;
+std::unordered_map<dpp::snowflake, dpp::snowflake> g_last_voice_channel;
+std::unordered_map<dpp::snowflake, std::string> g_channel_name_cache;
+std::unordered_map<dpp::snowflake, std::string> g_username_cache;
 
-        if (auto* ch = dpp::find_channel(id)) {
-            auto name = ch->name;
-            g_channel_name_cache.emplace(id, name);
-            return name;
-        }
-        return {};
+std::string get_channel_name(dpp::snowflake id) {
+    if (!id) return {};
+    auto it = g_channel_name_cache.find(id);
+    if (it != g_channel_name_cache.end())
+        return it->second;
+
+    if (auto* ch = dpp::find_channel(id)) {
+        auto name = ch->name;
+        g_channel_name_cache.emplace(id, name);
+        return name;
     }
 
-    std::string get_username(dpp::cluster* cluster,
-                             dpp::snowflake guild_id,
-                             dpp::snowflake user_id) {
-        auto it = g_username_cache.find(user_id);
-        if (it != g_username_cache.end())
-            return it->second;
-
-        if (dpp::user* cached = dpp::find_user(user_id)) {
-            std::string name = cached->username;
-            g_username_cache.emplace(user_id, name);
-            return name;
-        }
-
-        if (cluster) {
-            cluster->guild_get_member(guild_id, user_id,
-                [](const dpp::confirmation_callback_t&){});
-        }
-
-        return std::to_string(user_id);
-    }
+    return {};
 }
 
-DiscordBot::DiscordBot(const std::string& token)
-    : token_(token),
-      running(false) {
+std::string get_username(dpp::cluster* cluster,
+                         dpp::snowflake guild_id,
+                         dpp::snowflake user_id) {
+    auto it = g_username_cache.find(user_id);
+    if (it != g_username_cache.end())
+        return it->second;
+
+    if (dpp::user* cached = dpp::find_user(user_id)) {
+        std::string name = cached->username;
+        g_username_cache.emplace(user_id, name);
+        return name;
+    }
+
+    if (cluster) {
+        cluster->guild_get_member(guild_id, user_id,
+                                  [](const dpp::confirmation_callback_t&) {});
+    }
+
+    return std::to_string(user_id);
+}
+
+} // namespace
+
+DiscordBot::DiscordBot(const std::string& token) : running(false) {
     try {
         unsigned int hw = std::thread::hardware_concurrency();
         if (hw == 0) hw = 4;
         LogDebug("[DiscordBot] HW threads: " + std::to_string(hw));
 
         uint32_t intents = dpp::i_default_intents
-                        | dpp::i_message_content
-                        | dpp::i_direct_messages
-                        | dpp::i_guild_voice_states;
+                           | dpp::i_message_content
+                           | dpp::i_direct_messages
+                           | dpp::i_guild_voice_states;
 
-        cluster = std::make_unique<dpp::cluster>(token_, intents);
+        cluster = std::make_unique<dpp::cluster>(token, intents);
+
         DiscordCluster::SetCluster(cluster.get());
-
-        {
-            std::lock_guard lock(status_mutex);
-            status.running = false;
-            status.last_error.clear();
-        }
 
         LogInfo("[DiscordBot] Initialized successfully");
     } catch (const std::exception& e) {
         std::string except = e.what();
-        {
-            std::lock_guard lock(status_mutex);
-            status.running = false;
-            status.last_error = except;
-        }
         LogError("[DiscordBot] Error initializing: " + except);
     }
 }
@@ -97,33 +88,16 @@ bool DiscordBot::Start() {
     try {
         if (!cluster) {
             LogError("[DiscordBot] Cluster is not initialized");
-            std::lock_guard lock(status_mutex);
-            status.running = false;
-            status.last_error = "Cluster not initialized";
             return false;
         }
 
         running = true;
         RegisterEventHandlers();
-
-        {
-            std::lock_guard lock(status_mutex);
-            status.running = false;        // «запускается», READY ещё не был
-            status.last_error.clear();
-        }
-
         cluster->start(dpp::st_wait);
-
         LogInfo("[DiscordBot] Started (sync)");
         return true;
-
     } catch (const std::exception& e) {
         std::string except = e.what();
-        {
-            std::lock_guard lock(status_mutex);
-            status.running = false;
-            status.last_error = except;
-        }
         LogError("[DiscordBot] Error starting: " + except);
         return false;
     }
@@ -136,13 +110,6 @@ void DiscordBot::StartAsync() {
     }
 
     running = true;
-
-    {
-        std::lock_guard lock(status_mutex);
-        status.running = false;
-        status.last_error.clear();
-    }
-
     botThread = std::thread(&DiscordBot::BotThreadFunction, this);
     std::ostringstream oss;
     oss << botThread.get_id();
@@ -151,31 +118,16 @@ void DiscordBot::StartAsync() {
 
 void DiscordBot::BotThreadFunction() {
     try {
-        // при async‑старте создаём кластер тут из сохранённого токена
-        cluster = std::make_unique<dpp::cluster>(token_);
-        DiscordCluster::SetCluster(cluster.get());
+        if (!cluster) {
+            LogError("[DiscordBot] Cluster is not initialized");
+            return;
+        }
 
         RegisterEventHandlers();
-
-        // помечаем «бот готов» и поднимаем running = true
-        cluster->on_ready([this](const dpp::ready_t& event) {
-            {
-                std::lock_guard<std::mutex> lock(status_mutex);
-                status.running = true;
-                status.last_error.clear();
-            }
-            std::ostringstream oss;
-            oss << std::this_thread::get_id();
-            LogInfo("[DiscordBot] Bot is ready (status.running = true, thread: "
-                    + oss.str() + ")");
-        });
-
         cluster->start(dpp::st_wait);
     } catch (const std::exception& e) {
-        std::lock_guard<std::mutex> lock(status_mutex);
-        status.running = false;
-        status.last_error = e.what();
-        LogError(std::string("[DiscordBot] BotThreadFunction error: ") + e.what());
+        std::string except = e.what();
+        LogError("[DiscordBot] Error in bot thread: " + except);
     }
 }
 
@@ -193,7 +145,6 @@ void DiscordBot::Stop() {
 
     running = false;
     CommandRegistry::StopCommandProcessor();
-
     if (cluster) {
         cluster->shutdown();
         LogInfo("[DiscordBot] Stopped");
@@ -201,12 +152,6 @@ void DiscordBot::Stop() {
 
     if (botThread.joinable()) {
         botThread.join();
-    }
-
-    {
-        std::lock_guard lock(status_mutex);
-        status.running = false;
-        // last_error можно оставить как есть
     }
 }
 
@@ -217,19 +162,15 @@ dpp::cluster& DiscordBot::GetCluster() {
 void DiscordBot::RegisterEventHandlers() {
     try {
         BuiltInCommands::SetCluster(cluster.get());
-
         BuiltInCommands::RegisterAll();
-
         BuiltInCallbacks::RegisterAll();
-
         CommandRegistry::StartCommandProcessor();
 
-        cluster->on_ready([this](const dpp::ready_t& event) {
+        cluster->on_ready([this](const dpp::ready_t&) {
             if (dpp::run_once<struct register_bot_commands>()) {
                 std::ostringstream oss;
                 oss << std::this_thread::get_id();
-                LogInfo("[DiscordBot] Bot is ready (thread: "
-                          + oss.str() + ")");
+                LogInfo("[DiscordBot] Bot is ready (thread: " + oss.str() + ")");
                 CommandRegistry::RegisterAllCommands(cluster.get());
             }
         });
@@ -248,30 +189,48 @@ void DiscordBot::RegisterEventHandlers() {
             CallbackRegistry::HandleFormSubmit(event);
         });
 
+        // Логика логирования сообщений
         cluster->on_message_create([this](const dpp::message_create_t& event) {
             if (event.msg.author.is_bot()) {
                 return;
             }
 
-            const auto cid = static_cast<long long>(event.msg.channel_id);
+            const auto cid = static_cast<uint64_t>(event.msg.channel_id);
             std::string channel_name = get_channel_name(event.msg.channel_id);
             std::string text = event.msg.author.username + ": " + event.msg.content;
+            LogChannel(static_cast<long long>(cid), channel_name, text);
 
-            LogChannel(cid, channel_name, text);
+            LoggedMessage m;
+            m.id         = static_cast<uint64_t>(event.msg.id);
+            m.channel_id = cid;
+            m.author_id  = static_cast<uint64_t>(event.msg.author.id);
+            m.author     = event.msg.author.username;
+            m.content    = event.msg.content;
+            // sent — time_t, считаем что это unix seconds
+            m.timestamp  = static_cast<uint64_t>(event.msg.sent);
+
+            {
+                std::lock_guard<std::mutex> lg(messagesMutex);
+                auto& dq = messagesByChannel[cid];
+                dq.push_back(std::move(m));
+                constexpr size_t MAX_PER_CHANNEL = 500;
+                if (dq.size() > MAX_PER_CHANNEL) {
+                    dq.pop_front();
+                }
+            }
         });
 
-        cluster->on_guild_member_add([this](const dpp::guild_member_add_t& event) {
+        cluster->on_guild_member_add([this](const dpp::guild_member_add_t&) {
             std::ostringstream oss;
             oss << std::this_thread::get_id();
-            LogInfo("[DiscordBot][" + oss.str() + "] " + "New member joined");
+            LogInfo("[DiscordBot][" + oss.str() + "] New member joined");
         });
 
         cluster->on_voice_state_update([this](const dpp::voice_state_update_t& event) {
             dpp::cluster* cl = cluster.get();
             const dpp::voicestate& vs = event.state;
-            dpp::snowflake user_id    = vs.user_id;
-            dpp::snowflake ch_id      = vs.channel_id;
-
+            dpp::snowflake user_id = vs.user_id;
+            dpp::snowflake ch_id = vs.channel_id;
             dpp::snowflake prev_ch_id = 0;
             auto it_prev = g_last_voice_channel.find(user_id);
             if (it_prev != g_last_voice_channel.end())
@@ -301,35 +260,57 @@ void DiscordBot::RegisterEventHandlers() {
 
             long long cid = static_cast<long long>(log_channel_id);
             std::string channel_name = get_channel_name(log_channel_id);
-            std::string username     = get_username(cl, vs.guild_id, user_id);
-
+            std::string username = get_username(cl, vs.guild_id, user_id);
             LogChannel(cid, channel_name, action + username);
         });
 
         std::ostringstream oss;
         oss << std::this_thread::get_id();
         LogInfo("[DiscordBot] Handlers registered (thread: " + oss.str() + ")");
-
     } catch (const std::exception& e) {
         std::string except = e.what();
-        {
-            std::lock_guard lock(status_mutex);
-            status.last_error = except;
-        }
         LogError("[DiscordBot] Error registering handlers: " + except);
     }
 }
 
-BotStatus DiscordBot::GetStatus() const {
-    std::lock_guard lock(status_mutex);
-    return status;
+std::vector<std::pair<uint64_t, std::string>> DiscordBot::ListTextChannels() const {
+    std::vector<std::pair<uint64_t, std::string>> result;
+
+    auto* cache = dpp::get_channel_cache();
+    if (!cache) {
+        return result;
+    }
+
+    for (const auto& [id, ch] : cache->get_container()) {
+        if (!ch) continue;
+        if (ch->is_text_channel()) {
+            result.emplace_back(static_cast<uint64_t>(id), ch->name);
+        }
+    }
+
+    return result;
 }
 
-void DiscordBot::SendMessage(dpp::snowflake channel_id, const std::string& text) {
-    if (!cluster) {
-        LogError("[DiscordBot] SendMessage: cluster is null");
-        return;
-    }
-    dpp::message msg(channel_id, text);
-    cluster->message_create(msg);
+std::vector<LoggedMessage> DiscordBot::GetRecentMessages(uint64_t channel_id, uint32_t limit) {
+    std::lock_guard<std::mutex> lg(messagesMutex);
+    std::vector<LoggedMessage> out;
+
+    auto it = messagesByChannel.find(channel_id);
+    if (it == messagesByChannel.end())
+        return out;
+
+    auto& dq = it->second;
+    if (dq.empty())
+        return out;
+
+    if (limit == 0 || limit > dq.size())
+        limit = static_cast<uint32_t>(dq.size());
+
+    out.reserve(limit);
+    auto start = dq.end();
+    std::advance(start, -static_cast<long>(limit));
+    for (auto it2 = start; it2 != dq.end(); ++it2)
+        out.push_back(*it2);
+
+    return out;
 }
