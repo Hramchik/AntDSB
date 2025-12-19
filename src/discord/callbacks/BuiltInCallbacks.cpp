@@ -8,9 +8,9 @@
 
 #include "BuiltInCallbacks.h"
 #include "config/ConfigManager.h"
-#include "discord/CallbackRegistry.h"
+#include "CallbackRegistry.h"
 #include "discord/ui/ApplicationUI.h"
-#include "discord/DiscordCluster.h"
+#include "../core/DiscordCluster.h"
 #include "logger/Logger.h"
 
 namespace {

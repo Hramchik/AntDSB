@@ -3,7 +3,7 @@
 //
 
 #include "ConsoleLoop.h"
-#include "discord/DiscordBot.h"
+#include "../discord/core/DiscordBot.h"
 #include "logger/Logger.h"
 #include <sstream>
 #include <iostream>

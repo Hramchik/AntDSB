@@ -1,4 +1,4 @@
-#include "discord/DiscordBot.h"
+#include "discord/core/DiscordBot.h"
 #include "config/ConfigManager.h"
 #include "utils/TokenValidator.h"
 #include "logger/Logger.h"

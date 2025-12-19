@@ -5,7 +5,7 @@
 #ifndef ANTDSB_BOTSERVICEIMPL_H
 #define ANTDSB_BOTSERVICEIMPL_H
 
-#include "discord/DiscordBot.h"
+#include "../discord/core/DiscordBot.h"
 #include "bot.grpc.pb.h"
 
 #include <grpcpp/grpcpp.h>

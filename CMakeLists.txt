@@ -42,14 +42,18 @@ target_link_libraries(antdsb_grpc PUBLIC gRPC::grpc++ protobuf::libprotobuf)
 set(SOURCES
         src/main.cpp
         src/config/ConfigManager.cpp
-        src/discord/DiscordBot.cpp
-        src/discord/BuiltInCommands.cpp
-        src/discord/CommandRegistry.cpp
-        src/discord/CallbackRegistry.cpp
-        src/discord/ui/ApplicationUI.cpp
-        src/utils/TokenValidator.cpp
+
+        src/discord/core/DiscordBot.cpp
+        src/discord/commands/BuiltInCommands.cpp
+        src/discord/commands/CommandRegistry.cpp
+        src/discord/callbacks/CallbackRegistry.cpp
         src/discord/callbacks/BuiltInCallbacks.cpp
+        src/discord/logging/DiscordLogging.cpp
+        src/discord/ui/ApplicationUI.cpp
+
+        src/utils/TokenValidator.cpp
         src/logger/Logger.cpp
+
         src/cli/ConsoleLoop.cpp
         src/api/BotServiceImpl.cpp
         src/api/GrpcServer.cpp

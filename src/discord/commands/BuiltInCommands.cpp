@@ -8,7 +8,7 @@
 #include "BuiltInCommands.h"
 #include "CommandRegistry.h"
 #include "logger/Logger.h"
-#include "ui/ApplicationUI.h"
+#include "../ui/ApplicationUI.h"
 
 static dpp::cluster* g_cluster = nullptr;
 
