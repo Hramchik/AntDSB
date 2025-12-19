@@ -14,13 +14,15 @@
 #include <unordered_map>
 #include <vector>
 
+std::string GetChannelNameCached(dpp::snowflake id);
+
 struct LoggedMessage {
     uint64_t id;
     uint64_t channel_id;
     uint64_t author_id;
     std::string author;
     std::string content;
-    uint64_t timestamp; // unix seconds
+    uint64_t timestamp;
 };
 
 class DiscordBot {
@@ -35,10 +37,8 @@ public:
 
     dpp::cluster& GetCluster();
 
-    // Список текстовых каналов (id + имя)
     std::vector<std::pair<uint64_t, std::string>> ListTextChannels() const;
 
-    // Последние limit сообщений канала (от старых к новым)
     std::vector<LoggedMessage> GetRecentMessages(uint64_t channel_id, uint32_t limit);
 
 private:
@@ -51,6 +51,10 @@ private:
 
     void RegisterEventHandlers();
     void BotThreadFunction();
+
+    void RegisterCoreHandlers();
+    void RegisterMessageLoggingHandlers();
+    void RegisterVoiceLoggingHandlers();
 };
 
 #endif //ANTDSB_DISCORDBOT_H

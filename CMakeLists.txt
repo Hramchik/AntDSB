@@ -46,9 +46,12 @@ set(SOURCES
         src/discord/BuiltInCommands.cpp
         src/discord/CommandRegistry.cpp
         src/discord/CallbackRegistry.cpp
+        src/discord/DiscordBot_MessageLogging.cpp
+        src/discord/DiscordBot_Queries.cpp
+        src/discord/DiscordBot_VoiceLogging.cpp
         src/discord/ui/ApplicationUI.cpp
-        src/utils/TokenValidator.cpp
         src/discord/callbacks/BuiltInCallbacks.cpp
+        src/utils/TokenValidator.cpp
         src/logger/Logger.cpp
         src/cli/ConsoleLoop.cpp
         src/api/BotServiceImpl.cpp
