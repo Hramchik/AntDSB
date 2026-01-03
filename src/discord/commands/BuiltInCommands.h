@@ -8,7 +8,7 @@
 class BuiltInCommands {
 public:
     static void RegisterAll();
-    static void SetCluster(dpp::cluster* cluster);  // новая функция
+    static void SetCluster(dpp::cluster* cluster);
 };
 
 #endif //ANTDSB_BUILTINCOMMANDS_H

@@ -5,9 +5,10 @@
 #ifndef ANTDSB_DISCORDBOT_H
 #define ANTDSB_DISCORDBOT_H
 
-#include <string>
-#include <thread>
+
 #include <memory>
+#include <thread>
+#include <atomic>
 
 #include <dpp/dpp.h>
 
@@ -18,19 +19,21 @@ public:
 
     bool Start();
     void StartAsync();
-    void Stop();
     void Wait();
+    void Stop();
 
     dpp::cluster& GetCluster();
 
 private:
-    std::unique_ptr<dpp::cluster> cluster;
-    std::thread botThread;
-    bool running{false};
-
+    void BotThreadFunction();
     void RegisterEventHandlers();
     void RegisterCoreHandlers();
-    void BotThreadFunction();
+
+    void RegisterTempVCHandlers(); // NEW
+
+    std::unique_ptr<dpp::cluster> cluster;
+    std::thread botThread;
+    std::atomic<bool> running;
 };
 
 #endif // ANTDSB_DISCORDBOT_H

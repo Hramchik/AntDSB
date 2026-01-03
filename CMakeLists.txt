@@ -1,5 +1,5 @@
 cmake_minimum_required(VERSION 4.0.0 FATAL_ERROR)
-project(AntDSB VERSION 0.3.1 LANGUAGES CXX C)
+project(AntDSB VERSION 0.4.1 LANGUAGES CXX C)
 
 set(CMAKE_CXX_STANDARD 20)
 set(CMAKE_CXX_STANDARD_REQUIRED ON)
@@ -15,6 +15,7 @@ set(SOURCES
         src/config/ConfigManager.cpp
 
         src/discord/core/DiscordBot.cpp
+        src/discord/tempvc/TempVC.cpp
         src/discord/commands/BuiltInCommands.cpp
         src/discord/commands/CommandRegistry.cpp
         src/discord/callbacks/CallbackRegistry.cpp

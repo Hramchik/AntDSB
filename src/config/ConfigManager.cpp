@@ -14,7 +14,7 @@ bool ConfigManager::ConfigExists(const std::string& configPath) {
 std::string ConfigManager::GetDefaultConfigTemplate() {
     return R"(# === Application Information ===
 application:
-  version: "0.3.1"                  # Application version (e.g., 0.1.0, 1.0.0)
+  version: "0.4.1"                  # Application version (e.g., 0.1.0, 1.0.0)
   name: "ANTHEMIC_SYSTEM"             # Application name
 
 # === Discord Bot Configuration ===
