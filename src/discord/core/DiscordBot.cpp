@@ -13,7 +13,9 @@
 #include "discord/commands/BuiltInCommands.h"
 #include "discord/callbacks/BuiltInCallbacks.h"
 #include "discord/logging/DiscordLogging.h"
-#include "discord/tempvc/TempVC.h"   // NEW
+#include "discord/logging/ApplicationLogger.h"
+#include "discord/tempvc/TempVC.h"
+#include "config/ConfigManager.h"
 
 #include "logger/Logger.h"
 
@@ -32,6 +34,20 @@ DiscordBot::DiscordBot(const std::string& token)
 
         cluster = std::make_unique<dpp::cluster>(token, intents);
         DiscordCluster::SetCluster(cluster.get());
+
+        const std::string config_path = "config/config.yml";
+        uint64_t log_channel_id = ConfigManager::ReadConfigValue<uint64_t>(
+            config_path,
+            "logging.application_log_channel_id",
+            0
+        );
+
+        if (log_channel_id != 0) {
+            ApplicationLogger::SetLogChannel(log_channel_id);
+            LogInfo("[DiscordBot] Application log channel configured: " + std::to_string(log_channel_id));
+        } else {
+            LogWarn("[DiscordBot] Application log channel not configured in config.yml");
+        }
 
         LogInfo("[DiscordBot] Initialized successfully");
     } catch (const std::exception& e) {
@@ -172,9 +188,6 @@ void DiscordBot::RegisterCoreHandlers() {
         LogInfo("[DiscordBot][" + oss.str() + "] New member joined");
     });
 
-    // ====== NEW: TempVC ======
-
-    // авто-инициализация хабов на guild_create
     cluster->on_guild_create([this](const dpp::guild_create_t& ev) {
         auto& state = GetTempVCState();
 
@@ -200,7 +213,6 @@ void DiscordBot::RegisterCoreHandlers() {
         LogInfo("[TempVC] Auto-init hubs: " + std::to_string(state.hub_channels.size()) + " hub(s) loaded");
     });
 
-    // voice_state_update
     cluster->on_voice_state_update([this](const dpp::voice_state_update_t& ev) {
         auto& state = GetTempVCState();
 
@@ -220,7 +232,6 @@ void DiscordBot::RegisterCoreHandlers() {
         else
             state.last_voice_channel.erase(user_id);
 
-        // зашёл в хаб
         if (new_channel && state.hub_channels.contains(new_channel) && new_channel != old_channel) {
             dpp::guild* g = dpp::find_guild(guild_id);
             if (!g) return;
@@ -251,7 +262,6 @@ void DiscordBot::RegisterCoreHandlers() {
                     temp_vc_info info{ user_id, new_channel, std::nullopt };
                     state.temp_channels[created_vc.id] = info;
 
-                    // перенос участника
                     DiscordCluster::GetCluster()->guild_member_move(
                         created_vc.id,
                         guild_id,
@@ -269,7 +279,6 @@ void DiscordBot::RegisterCoreHandlers() {
                         }
                     );
 
-                    // панель управления в голосовом канале
                     dpp::message m;
                     m.set_channel_id(created_vc.id);
 
@@ -280,7 +289,8 @@ void DiscordBot::RegisterCoreHandlers() {
                         "• Кол-во участников\n"
                         "• Переименовать\n"
                         "• Видимость\n"
-                        "• Права доступа"
+                        "• Права доступа\n"
+                        "# Этот функционал в разработке"
                     );
 
                     dpp::component row;
@@ -360,7 +370,6 @@ void DiscordBot::RegisterCoreHandlers() {
         }
     });
 
-    // таймер
     cluster->start_timer([this](dpp::timer) {
         auto& state = GetTempVCState();
         auto now = std::chrono::steady_clock::now();
@@ -428,4 +437,3 @@ void DiscordBot::RegisterCoreHandlers() {
         }
     }, 10);
 }
-

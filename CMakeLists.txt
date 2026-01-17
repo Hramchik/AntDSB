@@ -15,6 +15,7 @@ set(SOURCES
         src/config/ConfigManager.cpp
 
         src/discord/core/DiscordBot.cpp
+        src/discord/logging/ApplicationLogger.cpp
         src/discord/tempvc/TempVC.cpp
         src/discord/commands/BuiltInCommands.cpp
         src/discord/commands/CommandRegistry.cpp

@@ -11,7 +11,7 @@
 
 #include "logger/Logger.h"
 
-inline int calc_thread_count(double ratio = 0.75, int min_threads = 2) {
+inline int calc_thread_count(double ratio = 0.75, int min_threads = 1) {
     unsigned int hw = std::thread::hardware_concurrency();
     if (hw == 0) {
         hw = 4;

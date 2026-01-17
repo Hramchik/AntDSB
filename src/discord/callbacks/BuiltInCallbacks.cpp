@@ -10,6 +10,7 @@
 #include "config/ConfigManager.h"
 #include "CallbackRegistry.h"
 #include "discord/ui/ApplicationUI.h"
+#include "discord/logging/ApplicationLogger.h"  // ДОБАВЛЕНО
 #include "../core/DiscordCluster.h"
 #include "logger/Logger.h"
 
@@ -37,6 +38,59 @@ namespace {
             return;
         }
 
+        // ============= ДОБАВЛЕНО: Извлекаем данные из embed для логирования =============
+        std::string real_name = "Unknown";
+        std::string age = "Unknown";
+        std::string nickname = "Unknown";
+        std::string applicant_username = "Unknown";
+
+        if (!event.command.msg.embeds.empty()) {
+            const dpp::embed& embed = event.command.msg.embeds[0];
+
+            // Извлекаем имя пользователя из автора
+            if (!embed.author->name.empty()) {
+                applicant_username = embed.author->name;
+            }
+
+            // Извлекаем данные из полей embed
+            for (const auto& field : embed.fields) {
+                if (field.name == "Реальное имя") {
+                    real_name = field.value;
+                } else if (field.name == "Игровой ник") {
+                    nickname = field.value;
+                } else if (field.name == "Возраст") {
+                    age = field.value;
+                }
+            }
+        }
+
+        // ============= ДОБАВЛЕНО: Логируем решение по заявке =============
+        if (approved) {
+            ApplicationLogger::LogApproval(
+                cluster,
+                event.command.member.user_id,
+                event.command.member.get_user()->username,
+                target_user_id,
+                applicant_username,
+                real_name,
+                age,
+                nickname
+            );
+        } else {
+            ApplicationLogger::LogRejection(
+                cluster,
+                event.command.member.user_id,
+                event.command.member.get_user()->username,
+                target_user_id,
+                applicant_username,
+                real_name,
+                age,
+                nickname,
+                ""  // Можно добавить причину отклонения
+            );
+        }
+        // ============= КОНЕЦ ДОБАВЛЕННОГО КОДА =============
+
         std::string dm_text = approved
             ? "Ваша заявка одобрена! Добро пожаловать."
             : "К сожалению, ваша заявка отклонена.";
@@ -44,10 +98,8 @@ namespace {
         dpp::snowflake channel_id = event.command.channel_id;
         dpp::snowflake message_id = event.command.message_id;
 
-        // DM пользователю
         cluster->direct_message_create(target_user_id, dpp::message(dm_text));
 
-        // Ответ модератору (ephemeral)
         event.reply(
             dpp::message(
                 approved
@@ -56,7 +108,6 @@ namespace {
             ).set_flags(dpp::m_ephemeral)
         );
 
-        // Собираем обновлённый embed со статусом
         dpp::embed ticket_embed;
         ticket_embed.set_color(approved ? 0x2ECC71 : 0xE74C3C);
         ticket_embed.set_title("Статус заявки");

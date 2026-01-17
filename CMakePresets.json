@@ -5,6 +5,11 @@
       "name": "ReleaseV",
       "displayName": "Release with vcpkg",
       "generator": "Visual Studio 18 2026",
+      "vendor": {
+        "jetbrains.com/clion": {
+          "toolchain": "Visual Studio"
+        }
+      },
       "binaryDir": "${sourceDir}/build/Release",
       "cacheVariables": {
         "CMAKE_BUILD_TYPE": "Release",
@@ -16,6 +21,11 @@
       "name": "DebugV",
       "displayName": "Debug with vcpkg",
       "generator": "Visual Studio 18 2026",
+      "vendor": {
+        "jetbrains.com/clion": {
+          "toolchain": "Visual Studio"
+        }
+      },
       "binaryDir": "${sourceDir}/build/Debug",
       "cacheVariables": {
         "CMAKE_BUILD_TYPE": "Debug",
